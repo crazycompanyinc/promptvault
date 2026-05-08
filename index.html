@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptVault — Version Control for AI Prompts</title>
+<meta name="description" content="Git-like version control for AI prompts. Track changes, A/B test variants, rollback, team collaboration. Framework-agnostic. Self-hosted option.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #1a1a24;
+  --border: #2a2a3a;
+  --text: #e8e8f0;
+  --text-dim: #8888a0;
+  --accent: #6366f1;
+  --accent-glow: rgba(99,102,241,0.3);
+  --green: #22c55e;
+  --yellow: #eab308;
+  --red: #ef4444;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+/* Nav */
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(10,10,15,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 64px; display: flex; align-items: center; justify-content: space-between; }
+.nav-logo { font-weight: 800; font-size: 1.25rem; background: linear-gradient(135deg, var(--accent), #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.nav-links { display: flex; gap: 2rem; align-items: center; }
+.nav-links a { color: var(--text-dim); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover { color: var(--text); }
+.nav-cta { background: var(--accent) !important; color: white !important; padding: 0.5rem 1.25rem; border-radius: 8px; font-weight: 600; }
+
+/* Hero */
+.hero { padding: 8rem 2rem 4rem; text-align: center; max-width: 900px; margin: 0 auto; position: relative; }
+.hero::before { content: ''; position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%); z-index: -1; pointer-events: none; }
+.badge { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--surface2); border: 1px solid var(--border); padding: 0.4rem 1rem; border-radius: 99px; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 1.5rem; }
+.badge-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+.hero h1 { font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -0.03em; }
+.hero h1 span { background: linear-gradient(135deg, var(--accent), #a855f7, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.hero p { font-size: 1.2rem; color: var(--text-dim); max-width: 600px; margin: 0 auto 2rem; }
+.hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn { padding: 0.85rem 2rem; border-radius: 10px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: all 0.2s; cursor: pointer; border: none; }
+.btn-primary { background: var(--accent); color: white; box-shadow: 0 4px 20px var(--accent-glow); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); }
+
+/* Terminal Demo */
+.terminal { max-width: 700px; margin: 3rem auto 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; text-align: left; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.terminal-header { background: var(--surface2); padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border); }
+.terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+.terminal-dot.red { background: #ff5f57; }
+.terminal-dot.yellow { background: #febc2e; }
+.terminal-dot.green { background: #28c840; }
+.terminal-title { margin-left: 0.5rem; font-size: 0.8rem; color: var(--text-dim); font-family: monospace; }
+.terminal-body { padding: 1.5rem; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem; line-height: 1.8; }
+.terminal-body .cmd { color: var(--green); }
+.terminal-body .arg { color: var(--yellow); }
+.terminal-body .output { color: var(--text-dim); }
+.terminal-body .highlight { color: var(--accent); }
+
+/* Sections */
+section { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+.section-label { text-transform: uppercase; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 1rem; }
+.section-title { font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 800; margin-bottom: 1rem; letter-spacing: -0.02em; }
+.section-subtitle { font-size: 1.1rem; color: var(--text-dim); max-width: 600px; }
+
+/* Problems */
+.problems { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+.problem-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; transition: border-color 0.2s; }
+.problem-card:hover { border-color: var(--red); }
+.problem-icon { font-size: 2rem; margin-bottom: 1rem; }
+.problem-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+.problem-card p { color: var(--text-dim); font-size: 0.95rem; }
+
+/* Features */
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+.feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; transition: all 0.2s; position: relative; overflow: hidden; }
+.feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), #a855f7); opacity: 0; transition: opacity 0.2s; }
+.feature-card:hover::before { opacity: 1; }
+.feature-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.feature-icon { width: 48px; height: 48px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1rem; }
+.feature-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+.feature-card p { color: var(--text-dim); font-size: 0.9rem; }
+
+/* How it works */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 3rem; }
+.step { text-align: center; }
+.step-number { width: 48px; height: 48px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; margin: 0 auto 1rem; }
+.step h3 { font-weight: 700; margin-bottom: 0.5rem; }
+.step p { color: var(--text-dim); font-size: 0.9rem; }
+
+/* Comparison */
+.comparison { margin-top: 3rem; overflow-x: auto; }
+.comparison table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.comparison th { background: var(--surface2); padding: 1rem; text-align: left; font-size: 0.85rem; font-weight: 600; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+.comparison td { padding: 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+.comparison tr:last-child td { border-bottom: none; }
+.comparison .highlight-row { background: rgba(99,102,241,0.05); }
+.comparison .check { color: var(--green); font-weight: 700; }
+.comparison .cross { color: var(--red); }
+.comparison .us { color: var(--accent); font-weight: 700; }
+
+/* Pricing */
+.pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+.price-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; text-align: center; position: relative; transition: all 0.2s; }
+.price-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+.price-card.popular { border-color: var(--accent); background: linear-gradient(180deg, rgba(99,102,241,0.1) 0%, var(--surface) 100%); }
+.popular-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 0.25rem 1rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
+.price-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+.price-card .price { font-size: 3rem; font-weight: 900; margin: 1rem 0; }
+.price-card .price span { font-size: 1rem; color: var(--text-dim); font-weight: 500; }
+.price-card .price .free { font-size: 2.5rem; }
+.price-features { list-style: none; margin: 1.5rem 0; text-align: left; }
+.price-features li { padding: 0.5rem 0; color: var(--text-dim); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+.price-features li::before { content: '✓'; color: var(--green); font-weight: 700; }
+.price-card .btn { width: 100%; }
+
+/* FAQ */
+.faq { max-width: 700px; margin: 3rem auto 0; }
+.faq-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 0.75rem; overflow: hidden; }
+.faq-q { padding: 1.25rem; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
+.faq-q:hover { background: var(--surface2); }
+.faq-a { padding: 0 1.25rem 1.25rem; color: var(--text-dim); font-size: 0.95rem; display: none; }
+.faq-item.open .faq-a { display: block; }
+.faq-arrow { transition: transform 0.2s; }
+.faq-item.open .faq-arrow { transform: rotate(180deg); }
+
+/* CTA */
+.cta-section { text-align: center; padding: 6rem 2rem; background: linear-gradient(180deg, var(--bg) 0%, rgba(99,102,241,0.05) 100%); }
+.cta-section h2 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; margin-bottom: 1rem; }
+.cta-section p { color: var(--text-dim); font-size: 1.1rem; max-width: 500px; margin: 0 auto 2rem; }
+
+/* Footer */
+footer { border-top: 1px solid var(--border); padding: 3rem 2rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
+footer a { color: var(--accent); text-decoration: none; }
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .hero { padding: 6rem 1.5rem 3rem; }
+  section { padding: 3rem 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-logo">⬡ PromptVault</div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">How It Works</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <a href="#cta" class="nav-cta">Get Started Free</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="badge"><span class="badge-dot"></span> Now in Beta — Free tier available</div>
+  <h1>Version Control for <span>AI Prompts</span></h1>
+  <p>Git-like version control, A/B testing, and collaboration for your AI prompts. Framework-agnostic. Self-hosted or cloud. Stop losing prompts in Slack threads.</p>
+  <div class="hero-buttons">
+    <a href="#cta" class="btn btn-primary">Start Free →</a>
+    <a href="#how-it-works" class="btn btn-secondary">See How It Works</a>
+  </div>
+
+  <!-- Terminal Demo -->
+  <div class="terminal">
+    <div class="terminal-header">
+      <div class="terminal-dot red"></div>
+      <div class="terminal-dot yellow"></div>
+      <div class="terminal-dot green"></div>
+      <span class="terminal-title">terminal — promptvault</span>
+    </div>
+    <div class="terminal-body">
+      <div><span class="cmd">$</span> <span class="arg">promptvault</span> init</div>
+      <div class="output">✓ Initialized PromptVault in ./prompts/</div>
+      <div class="output">✓ Created .promptvault/config.yaml</div>
+      <div><span class="cmd">$</span> <span class="arg">promptvault</span> commit -m "Add customer support v2"</div>
+      <div class="output">✓ Committed prompt "customer-support" (v2)</div>
+      <div class="output">  Diff: -3 lines, +7 lines</div>
+      <div><span class="cmd">$</span> <span class="arg">promptvault</span> diff v1 v2</div>
+      <div class="output">  <span class="highlight">@@ -12,3 +12,7 @@</span></div>
+      <div class="output">  -You are a helpful assistant</div>
+      <div class="output">  +You are a senior customer support agent for Acme Corp.</div>
+      <div class="output">  +Always be empathetic. Escalate if sentiment &lt; -0.5.</div>
+      <div><span class="cmd">$</span> <span class="arg">promptvault</span> rollback v1</div>
+      <div class="output">✓ Rolled back "customer-support" to v1</div>
+      <div class="output">  Previous version preserved in history</div>
+    </div>
+  </div>
+</div>
+
+<!-- Problems -->
+<section>
+  <div class="section-label">The Problem</div>
+  <h2 class="section-title">Your prompts are a mess</h2>
+  <p class="section-subtitle">Teams lose track of what prompt version is in production. When something breaks, nobody knows what changed.</p>
+  <div class="problems">
+    <div class="problem-card">
+      <div class="problem-icon">🔍</div>
+      <h3>No Version History</h3>
+      <p>Prompts live in Slack, Notion, and random code files. When a prompt breaks, you can't see what changed or when.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">🧪</div>
+      <h3>No A/B Testing</h3>
+      <p>You can't compare prompt variants side-by-side. You're guessing which version performs better.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">👥</div>
+      <h3>No Collaboration</h3>
+      <p>Engineers and domain experts can't work on prompts together. No review process, no approvals.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">💥</div>
+      <h3>No Rollback</h3>
+      <p>When a new prompt version breaks production, you can't instantly revert. Downtime costs money.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="section-label">Features</div>
+  <h2 class="section-title">Everything you need to manage prompts</h2>
+  <p class="section-subtitle">Framework-agnostic. Works with OpenAI, Anthropic, LangChain, LlamaIndex, or any custom setup.</p>
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">📝</div>
+      <h3>Git-like Version Control</h3>
+      <p>Commit, diff, branch, and merge prompts just like code. Full history with semantic diffs.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧪</div>
+      <h3>A/B Testing Engine</h3>
+      <p>Run experiments between prompt variants. Automatic statistical significance detection.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔄</div>
+      <h3>One-Click Rollback</h3>
+      <p>Instantly revert to any previous version. Zero-downtime prompt deployments.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👥</div>
+      <h3>Team Collaboration</h3>
+      <p>Review workflows, comments, approvals. Let domain experts own prompts, not just engineers.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔌</div>
+      <h3>CI/CD Integration</h3>
+      <p>API and CLI for automated testing. Integrate prompt validation into your deployment pipeline.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏠</div>
+      <h3>Self-Hosted Option</h3>
+      <p>Run on your own infrastructure. Your prompts never leave your servers. SOC2-ready.</p>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section id="how-it-works">
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">Up and running in 5 minutes</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-number">1</div>
+      <h3>Install CLI</h3>
+      <p><code>npm i -g promptvault</code> or <code>pip install promptvault</code></p>
+    </div>
+    <div class="step">
+      <div class="step-number">2</div>
+      <h3>Initialize Project</h3>
+      <p>Run <code>promptvault init</code> in your project directory</p>
+    </div>
+    <div class="step">
+      <div class="step-number">3</div>
+      <h3>Commit Prompts</h3>
+      <p>Track changes with <code>promptvault commit</code></p>
+    </div>
+    <div class="step">
+      <div class="step-number">4</div>
+      <h3>Collaborate & Deploy</h3>
+      <p>Review, test, and deploy via dashboard or CI/CD</p>
+    </div>
+  </div>
+</section>
+
+<!-- Comparison -->
+<section>
+  <div class="section-label">Comparison</div>
+  <h2 class="section-title">Why PromptVault?</h2>
+  <p class="section-subtitle">The only framework-agnostic, self-hosted prompt version control tool with a generous free tier.</p>
+  <div class="comparison">
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th class="us">PromptVault</th>
+          <th>PromptLayer</th>
+          <th>LangSmith</th>
+          <th>Helicone</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Version Control</td>
+          <td class="check us">✅ Full git-like</td>
+          <td class="check">✅ Basic</td>
+          <td class="check">✅ Basic</td>
+          <td class="cross">❌</td>
+        </tr>
+        <tr>
+          <td>A/B Testing</td>
+          <td class="check us">✅ Built-in</td>
+          <td class="check">✅</td>
+          <td class="cross">❌</td>
+          <td class="cross">❌</td>
+        </tr>
+        <tr>
+          <td>Self-Hosted</td>
+          <td class="check us">✅</td>
+          <td class="cross">❌ Cloud only</td>
+          <td class="cross">❌ Cloud only</td>
+          <td class="cross">❌ Cloud only</td>
+        </tr>
+        <tr>
+          <td>Framework-Agnostic</td>
+          <td class="check us">✅</td>
+          <td class="check">✅</td>
+          <td class="cross">❌ LangChain only</td>
+          <td class="check">✅</td>
+        </tr>
+        <tr>
+          <td>Free Tier</td>
+          <td class="check us">✅ 10 prompts</td>
+          <td class="check">✅ Limited</td>
+          <td class="cross">❌ 500 traces</td>
+          <td class="check">✅ 10K req/mo</td>
+        </tr>
+        <tr>
+          <td>Starting Price</td>
+          <td class="check us">Free</td>
+          <td>Custom 💼</td>
+          <td>$50/mo</td>
+          <td>$50/mo</td>
+        </tr>
+        <tr class="highlight-row">
+          <td>CLI-First</td>
+          <td class="check us">✅</td>
+          <td class="cross">❌</td>
+          <td class="cross">❌</td>
+          <td class="cross">❌</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing">
+  <div class="section-label">Pricing</div>
+  <h2 class="section-title">Simple, transparent pricing</h2>
+  <p class="section-subtitle">Start free. Scale as you grow. No hidden fees.</p>
+  <div class="pricing">
+    <div class="price-card">
+      <h3>Free</h3>
+      <div class="price"><span class="free">Free</span></div>
+      <p style="color:var(--text-dim);font-size:0.9rem;">For individuals and small projects</p>
+      <ul class="price-features">
+        <li>10 prompts</li>
+        <li>Version history</li>
+        <li>CLI access</li>
+        <li>Community support</li>
+      </ul>
+      <a href="#cta" class="btn btn-secondary">Get Started</a>
+    </div>
+    <div class="price-card popular">
+      <div class="popular-badge">MOST POPULAR</div>
+      <h3>Pro</h3>
+      <div class="price">$19<span>/mo</span></div>
+      <p style="color:var(--text-dim);font-size:0.9rem;">For growing teams</p>
+      <ul class="price-features">
+        <li>100 prompts</li>
+        <li>A/B testing</li>
+        <li>Team collaboration</li>
+        <li>CI/CD integration</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="#cta" class="btn btn-primary">Start Free Trial</a>
+    </div>
+    <div class="price-card">
+      <h3>Team</h3>
+      <div class="price">$49<span>/mo</span></div>
+      <p style="color:var(--text-dim);font-size:0.9rem;">For teams that need more</p>
+      <ul class="price-features">
+        <li>Unlimited prompts</li>
+        <li>Self-hosted option</li>
+        <li>SSO & RBAC</li>
+        <li>Compliance reports</li>
+        <li>Dedicated support</li>
+      </ul>
+      <a href="#cta" class="btn btn-secondary">Start Free Trial</a>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="section-label">FAQ</div>
+  <h2 class="section-title">Frequently asked questions</h2>
+  <div class="faq">
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">Does it work with my LLM framework? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Yes! PromptVault is completely framework-agnostic. It works with OpenAI, Anthropic, Google, LangChain, LlamaIndex, or any custom setup. The CLI and API are provider-independent.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">Can I self-host? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Absolutely. The Team plan includes a self-hosted option. Your prompts never leave your infrastructure. Perfect for SOC2, HIPAA, or GDPR compliance.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">How is this different from PromptLayer? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">PromptLayer is cloud-only with enterprise pricing (no public pricing). PromptVault offers a free tier, self-hosted option, CLI-first workflow, and transparent pricing starting at $19/mo.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">What happens if I exceed my plan? <span class="faq-arrow">▾</span></div>
+      <div class="faq-a">We'll notify you before any hard limits. You can upgrade anytime, or we'll gracefully throttle rather than break your workflow.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div id="cta" class="cta-section">
+  <h2>Stop losing prompts in Slack threads</h2>
+  <p>Join the beta. Free tier available. No credit card required.</p>
+  <div class="hero-buttons">
+    <a href="mailto:hello@promptvault.dev?subject=Beta Access Request" class="btn btn-primary">Request Beta Access →</a>
+    <a href="https://github.com/crazycompanyinc/promptvault" class="btn btn-secondary">View on GitHub</a>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <p>⬡ PromptVault by <a href="https://zootechnologies.com">ZOO Technologies</a> — Version control for the AI era</p>
+  <p style="margin-top:0.5rem;">© 2026 PromptVault. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
